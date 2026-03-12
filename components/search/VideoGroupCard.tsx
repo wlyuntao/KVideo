@@ -15,6 +15,7 @@ import { LatencyBadge } from '@/components/ui/LatencyBadge';
 import { FavoriteButton } from '@/components/favorites/FavoriteButton';
 import { Video } from '@/lib/types';
 import { parseVideoTitle } from '@/lib/utils/video';
+import { storeGroupedSources } from '@/lib/utils/grouped-sources-cache';
 
 export interface GroupedVideo {
     /** Representative video (lowest latency) */
@@ -50,7 +51,7 @@ export const VideoGroupCard = memo<VideoGroupCardProps>(({
         return currentLatencies.length > 0 ? Math.min(...currentLatencies) : undefined;
     }, [videos, latencies]);
 
-    // Generate URL with grouped sources data
+    // Generate URL with grouped sources stored in sessionStorage (avoids long URLs / 414 errors)
     const videoUrl = useMemo(() => {
         const params = new URLSearchParams({
             id: String(representative.vod_id),
@@ -58,7 +59,7 @@ export const VideoGroupCard = memo<VideoGroupCardProps>(({
             title: representative.vod_name,
         });
 
-        // Add group data if multiple sources
+        // Store group data in sessionStorage and pass short key in URL
         if (videos.length > 1) {
             const groupData = videos.map(v => ({
                 id: v.vod_id,
@@ -69,7 +70,10 @@ export const VideoGroupCard = memo<VideoGroupCardProps>(({
                 typeName: v.type_name,
                 remarks: v.vod_remarks,
             }));
-            params.set('groupedSources', JSON.stringify(groupData));
+            const cacheKey = storeGroupedSources(groupData);
+            if (cacheKey) {
+                params.set('gs', cacheKey);
+            }
         }
 
         return `/player?${params.toString()}`;

@@ -6,6 +6,7 @@ import { useDesktopPlayerLogic } from './hooks/useDesktopPlayerLogic';
 import { useHlsPlayer } from './hooks/useHlsPlayer';
 import { useAutoSkip } from './hooks/useAutoSkip';
 import { useStallDetection } from './hooks/useStallDetection';
+import { useVideoResolution } from './hooks/useVideoResolution';
 import { DesktopControlsWrapper } from './desktop/DesktopControlsWrapper';
 import { DesktopOverlayWrapper } from './desktop/DesktopOverlayWrapper';
 import { DanmakuCanvas } from './DanmakuCanvas';
@@ -50,6 +51,9 @@ export function DesktopVideoPlayer({
   const { fullscreenType: settingsFullscreenType } = usePlayerSettings();
   const isIOS = useIsIOS();
   const isMobile = useIsMobile();
+
+  // Detect actual video resolution
+  const videoResolution = useVideoResolution(refs.videoRef);
 
   // Danmaku
   const { danmakuEnabled, setDanmakuEnabled, comments: danmakuComments } = useDanmaku({
@@ -229,6 +233,16 @@ export function DesktopVideoPlayer({
               isPlaying={isPlaying}
               duration={duration}
             />
+          )}
+
+          {/* Video Resolution Badge - shows actual resolution from video stream */}
+          {videoResolution && (
+            <div className="absolute top-3 left-3 z-20 pointer-events-none">
+              <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold text-white ${videoResolution.color} opacity-80`}>
+                {videoResolution.label}
+                <span className="font-normal opacity-80">{videoResolution.width}x{videoResolution.height}</span>
+              </span>
+            </div>
           )}
 
           <DesktopOverlayWrapper

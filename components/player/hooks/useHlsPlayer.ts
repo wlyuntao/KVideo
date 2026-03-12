@@ -38,7 +38,10 @@ export function useHlsPlayer({
         // Check if HLS is supported natively (Safari, Mobile Chrome)
         const isNativeHlsSupported = video.canPlayType('application/vnd.apple.mpegurl');
 
-        if (Hls.isSupported()) {
+        // Check if MSE is available (required by HLS.js)
+        const isMSESupported = Hls.isSupported();
+
+        if (isMSESupported) {
 
             // Define custom loader class to intercept manifest loading
             // We use 'any' cast because default loader type might not be strictly exposed in all typings
@@ -367,8 +370,28 @@ export function useHlsPlayer({
                 video.src = src;
             }
         } else {
-            console.error('[HLS] HLS not supported');
-            onError?.('当前浏览器不支持 HLS 视频播放');
+            // Neither MSE nor native HLS supported
+            // Try direct playback as last resort (works for mp4 and some browser WebView)
+            console.warn('[HLS] No MSE or native HLS support. Trying direct playback...');
+            video.src = src;
+
+            let directFailed = false;
+            const handleCanPlay = () => {
+                directFailed = false;
+            };
+            const handleError = () => {
+                if (directFailed) return;
+                directFailed = true;
+                // Try proxied URL as final attempt
+                const proxiedUrl = `/api/proxy?url=${encodeURIComponent(src)}`;
+                video.src = proxiedUrl;
+                video.addEventListener('error', () => {
+                    onError?.('当前浏览器不支持 HLS 视频播放。建议使用 Chrome、Edge 或 Safari 浏览器。');
+                }, { once: true });
+            };
+
+            video.addEventListener('canplay', handleCanPlay, { once: true });
+            video.addEventListener('error', handleError, { once: true });
         }
 
         return () => {
